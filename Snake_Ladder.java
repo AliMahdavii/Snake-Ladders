@@ -1,7 +1,12 @@
+package Snake_Ladders;
+
 import javafx.application.Application;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
@@ -27,12 +32,16 @@ public class Snake_Ladder extends Application {
     private List<Player> players=new ArrayList<>();
     private int currentPlayerIndex=0;
 
+    private Image[] diceImages=new Image[6];
+    private ImageView diceView;
+
     @Override
     public void start(Stage stage) throws Exception {
         board=new GridPane();
         board.setAlignment(Pos.CENTER);
 
         Pane gameLayer=new Pane();
+
         gameLayer.getChildren().add(board);
 
         int number=1;
@@ -65,14 +74,27 @@ public class Snake_Ladder extends Application {
 
         createPlayers(gameLayer);
 
-        Button rollDice=new Button("Click");
+        diceImages[0]=new Image(getClass().getResource("diceImages/1.PNG").toExternalForm());
+        diceImages[1]=new Image(getClass().getResource("diceImages/2.PNG").toExternalForm());
+        diceImages[2]=new Image(getClass().getResource("diceImages/3.PNG").toExternalForm());
+        diceImages[3]=new Image(getClass().getResource("diceImages/4.PNG").toExternalForm());
+        diceImages[4]=new Image(getClass().getResource("diceImages/5.PNG").toExternalForm());
+        diceImages[5]=new Image(getClass().getResource("diceImages/6.PNG").toExternalForm());
+
+        diceView=new ImageView(diceImages[0]);
+        diceView.setFitHeight(60);
+        diceView.setFitWidth(60);
+
+        Button rollDice=new Button();
+        rollDice.setGraphic(diceView);
         rollDice.setOnAction(actionEvent -> {
+            rollDice.setGraphic(diceView);
             rollDiceAndMove();
         });
 
-        VBox root=new VBox(10,gameLayer,rollDice);
-        root.setPrefSize(tileSize*width,tileSize*height+50);
+        VBox root=new VBox(20,gameLayer,rollDice);
         root.setAlignment(Pos.CENTER);
+        root.setPrefSize(tileSize*width,tileSize*height+250);
 
         Scene scene=new Scene(root);
         stage.setTitle("SNAKE_LADDER");
@@ -105,6 +127,8 @@ public class Snake_Ladder extends Application {
 
         int diceValue=random.nextInt(6)+1;
         System.out.println("Tas: "+diceValue);
+
+        diceView.setImage(diceImages[diceValue-1]);
 
         int newPos=current.getPosition()+diceValue;
         if (newPos>width*height) newPos=width*height;
@@ -169,7 +193,9 @@ public class Snake_Ladder extends Application {
             double startX=tileSize/2.0 + (i*20)-30;
             double startY=tileSize*9 + tileSize/2.0;
 
-            Player player=new Player("Player "+(i+1),colors[i], startX, startY);
+            String[] colorNames={"RED","BLUE","GREEN","YELLOW"};
+
+            Player player=new Player("Snake_Ladders.Player "+colorNames[i],colors[i], startX, startY);
             players.add(player);
             board.getChildren().add(player.getPiece());
             player.setPosition(1);
