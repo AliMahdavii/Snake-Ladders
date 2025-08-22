@@ -1,10 +1,11 @@
 package Snake_Ladders;
 
+import javafx.animation.PauseTransition;
 import javafx.application.Application;
-import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.GridPane;
@@ -14,8 +15,10 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Line;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 import java.util.*;
 
@@ -35,12 +38,19 @@ public class Snake_Ladder extends Application {
     private Image[] diceImages=new Image[6];
     private ImageView diceView;
 
+    private Label title;
+    private Button rollDice;
+
     @Override
     public void start(Stage stage) throws Exception {
         board=new GridPane();
         board.setAlignment(Pos.CENTER);
 
         Pane gameLayer=new Pane();
+
+        title = new Label("SNAKE && LADDERS");
+        title.setFont(Font.font( 36));
+        title.setStyle("-fx-text-fill: black;");
 
         gameLayer.getChildren().add(board);
 
@@ -51,7 +61,9 @@ public class Snake_Ladder extends Application {
             for (int col=0; col<width; col++){
                 Rectangle tile=new Rectangle(tileSize,tileSize);
 
-                tile.setFill((row+col)%2==0?Color.BEIGE:Color.LIGHTGRAY);
+                int colIndex=left_right?col:width-1-col;
+
+                tile.setFill((row+colIndex)%2==0?Color.web("#dda15e"):Color.web("#fefae0"));
                 tile.setStroke(Color.BLACK);
 
                 Text text=new Text(String.valueOf(number));
@@ -59,11 +71,7 @@ public class Snake_Ladder extends Application {
 
                 StackPane cell=new StackPane(tile,text);
 
-                if (left_right) {
-                    board.add(cell,col,row);
-                } else {
-                    board.add(cell,width-col-1,row);
-                }
+                board.add(cell,colIndex,row);
                 number++;
             }
             left_right=!left_right;
@@ -85,16 +93,17 @@ public class Snake_Ladder extends Application {
         diceView.setFitHeight(60);
         diceView.setFitWidth(60);
 
-        Button rollDice=new Button();
+        rollDice=new Button();
         rollDice.setGraphic(diceView);
         rollDice.setOnAction(actionEvent -> {
-            rollDice.setGraphic(diceView);
+            if (players.get(currentPlayerIndex).getName().equals("YOU")){
             rollDiceAndMove();
+            }
         });
 
-        VBox root=new VBox(20,gameLayer,rollDice);
+        VBox root=new VBox(10,title,gameLayer,rollDice);
         root.setAlignment(Pos.CENTER);
-        root.setPrefSize(tileSize*width,tileSize*height+250);
+        root.setPrefSize(tileSize*width+10,tileSize*height+250);
 
         Scene scene=new Scene(root);
         stage.setTitle("SNAKE_LADDER");
@@ -126,27 +135,16 @@ public class Snake_Ladder extends Application {
         Player current=players.get(currentPlayerIndex);
 
         int diceValue=random.nextInt(6)+1;
-        System.out.println("Tas: "+diceValue);
 
         diceView.setImage(diceImages[diceValue-1]);
 
-        int newPos=current.getPosition()+diceValue;
+        int oldPos=current.getPosition();
+        int newPos=oldPos+diceValue;
+
         if (newPos>width*height) newPos=width*height;
 
-        if (snake_ladders.containsKey(newPos)){
-            int jumpPos=snake_ladders.get(newPos);
-            System.out.println("Move from "+newPos+" to "+jumpPos);
-            newPos=jumpPos;
-        }
+        animateMove(current,newPos-oldPos);
 
-        current.setPosition(newPos);
-        movePlayer(current);
-
-        if (newPos==width*height) {
-            System.out.println("You WIN!!!!  player: "+current.getName());
-        } else {
-            nextTurn();
-        }
     }
 
     private void drawSnake_ladders(Pane board, Map<Integer,Integer> snake_ladders){
@@ -187,15 +185,14 @@ public class Snake_Ladder extends Application {
     }
 
     private void createPlayers(Pane board){
-        Color[] colors={Color.RED, Color.BLUE, Color.GREEN, Color.YELLOW};
+        Color[] colors={Color.RED, Color.BLUE};
+        String[] names={"YOU","COMPUTER"};
 
         for (int i=0; i<colors.length; i++){
             double startX=tileSize/2.0 + (i*20)-30;
             double startY=tileSize*9 + tileSize/2.0;
 
-            String[] colorNames={"RED","BLUE","GREEN","YELLOW"};
-
-            Player player=new Player("Snake_Ladders.Player "+colorNames[i],colors[i], startX, startY);
+            Player player=new Player(names[i],colors[i], startX, startY);
             players.add(player);
             board.getChildren().add(player.getPiece());
             player.setPosition(1);
@@ -214,8 +211,16 @@ public class Snake_Ladder extends Application {
         double y=coords[1];
 
         int playerIndex=players.indexOf(player);
-        double offsetX=(playerIndex % 2)*15-7;
-        double offsetY=(playerIndex/2.0)*15-7;
+
+        double offsetX=0;
+        double offsetY=0;
+
+        if (playerIndex==0){
+            offsetX=-5;
+        } else if (playerIndex==1){
+            offsetX=5;
+        }
+
 
         player.getPiece().setTranslateX(x+offsetX);
         player.getPiece().setTranslateY(y+offsetY);
@@ -225,10 +230,53 @@ public class Snake_Ladder extends Application {
     private void nextTurn(){
         currentPlayerIndex=(currentPlayerIndex+1)%players.size();
         Player current=players.get(currentPlayerIndex);
-        System.out.println("Nobat: "+current.getName());
+
+        boolean isComputer=current.getName().equals("COMPUTER");
+        rollDice.setDisable(isComputer);
+
+        if (isComputer){
+            PauseTransition pause=new PauseTransition(Duration.seconds(1.0));
+            pause.setOnFinished(actionEvent -> {
+                rollDiceAndMove();
+            });
+            pause.play();
+        }
+    }
+
+    private void animateMove(Player player,int steps){
+        int startPos=player.getPosition();
+
+        for (int i=1; i<=steps; i++){
+            int nextPos=startPos+i;
+
+            PauseTransition pauseTransition=new PauseTransition(Duration.seconds(i*0.3));
+            pauseTransition.setOnFinished(actionEvent -> {
+                player.setPosition(nextPos);
+                movePlayer(player);
+
+                if (nextPos==startPos+steps){
+
+                    if (snake_ladders.containsKey(player.getPosition())){
+                        int jumpPos=snake_ladders.get(player.getPosition());
+                        player.setPosition(jumpPos);
+                        movePlayer(player);
+                    }
+
+                    if (player.getPosition()==width*height) {
+                        System.out.println(player.getName() + " WIN!!!!");
+                        title.setText(player.getName()+"WIN"+(player.getName().equals("COMPUTER")?"S":"!!!!!!"));
+                        rollDice.setDisable(true);
+                    } else {
+                        nextTurn();
+                    }
+                }
+            });
+            pauseTransition.play();
+        }
     }
 
     public static void main(String[] args) {
         launch(args);
     }
 }
+
